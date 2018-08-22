@@ -6,16 +6,16 @@ A simple flash translation layer that replays a trace containing block addresses
 
 Takes in a list of block numbers and Operation Type as an input file. the format resembles
 
-<code>
-5188 READ\
-5208 READ\
-6164 READ\
-5236 READ\
-5276 READ\
-1024 WRITE\
-16 WRITE\
-16384 WRITE\
-</code>
+```
+5188 READ
+5208 READ
+6164 READ
+5236 READ
+5276 READ
+1024 WRITE
+16 WRITE
+16384 WRITE
+```
 
 If the Operation is not specified (READ/WRITE), then the default is write operation.
 
@@ -43,20 +43,17 @@ next physical address that can be allocated to a logical page.
 
 ## Functions
 
-<code>
-* getNextPhysicalPage()\
+* `getNextPhysicalPage()`\
 returns next valid physical page. if the LBN is already allocated, invalidate physical page, return new physical address.
-* map(lbn, pbn)\
+* `map(lbn, pbn)`\
 update lbn with pbn. assert if lbn is already mapped.
-* getFreeBlock()\
+* `getFreeBlock()`\
 returns a block number that has all pages invalidated.
-* getTargetBlock()\
+* `getTargetBlock()`\
 return block number having the least non-zero valid pages.
-* GC(X)\
+* `GC(X)`\
 get a free block, get a target block, remap all lbns of the pbns in target block to the free block. mark victim block as available. call GC until X% of the blocks containing invalid pages have been cleaned/GC'ed.
 TODO: Enhance GC to not only take free blocks but also blocks that have been filled partially.
-
-</code>
 
 ## Garbage Collection
 
