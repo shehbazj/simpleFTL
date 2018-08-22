@@ -48,9 +48,8 @@ def getppn(pblist, l2pmap, lpn):
 		for i in range(0, len(pblist)):
 			if pblist[i].left is not 0:
 				curr_physical_block = i
-				print 'curr_physical block set to '+str(curr_physical_block)
 				curr_physical_page = page_per_block - pblist[i].left
-				print 'curr_physical page set to '+str(curr_physical_page)
+				break
 
 	# allocate next physical block
 	pblist[curr_physical_block].left-=1
@@ -62,7 +61,8 @@ def getppn(pblist, l2pmap, lpn):
 
 # map a lpn to the next available ppn using the page level mapping scheme
 def page_level_map(pblist, l2pmap, lpn):
-	if l2pmap[lpn] is not None:
+	if l2pmap[lpn] is not 0:
+		print 'invalidating value'
 		invalidate_page(pblist, l2pmap, lpn)
 	ppn = getppn(pblist, l2pmap, lpn)
 	l2pmap[lpn] = ppn
@@ -123,8 +123,6 @@ if __name__ == "__main__":
 	pblist = []
 	for i in range(1, num_blocks + 1):
 		pblist.append(pb(i, page_per_block))
-
-	print 'pblist size = ' + str(len(pblist)) 
 
 	lines = tuple(open(args.trace_file, 'r'))
 	
