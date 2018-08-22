@@ -2,8 +2,9 @@
 
 A simple flash translation layer that replays a trace containing block addresses and read/write operation.
 
-## Input / Output
+## Input
 
+* Block Trace
 Takes in a list of block numbers and Operation Type as an input file. the format resembles
 
 ```
@@ -18,6 +19,19 @@ Takes in a list of block numbers and Operation Type as an input file. the format
 ```
 
 If the Operation is not specified (READ/WRITE), then the default is write operation.
+
+* Fail-Pairs
+A list of block tuples of the format - 
+
+```
+primary\_logical\_block recovery\_logical\_block degree\_of\_loss
+```
+
+Example - for ext4, the primary block could be an inode that is written on disk. the secondary block would be the journal that is written to from which primary block is recovered in case of a failure.
+
+## Output
+
+* Number of Physical blocks containing both primary and recovery blocks together.
 
 ## Simulator Type
 
