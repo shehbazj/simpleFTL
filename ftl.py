@@ -30,24 +30,34 @@ def get_empty_and_dirty_blocks(pblist):
 
 	eb_id = -1
 	db_id = -1
-	# empty block is any block that has left = page_per_block
-	for block in pblist:
-		if block.left is page_per_block and block.gc_count < curr_gc_count:
-			eb_id = block.num
-			break
-	if eb_id is -1:
-		print 'could not find empty block, exiting'
-		return (-1,-1)
-	
+
 	maxinvalid = 0
-	for block in pblist:	
-		if block.invalid_count > maxinvalid and block.gc_count < curr_gc_count:  
+	for block in pblist:
+#		print 'block '+str(block.num)+' iv_count = '+str(block.invalid_count) +' gc count = '+str(block.gc_count)+' curr_gc_count = '+str(curr_gc_count)
+		if block.invalid_count > maxinvalid and block.gc_count < curr_gc_count:
+			print 'got db = '+str(block.num)
 			db_id = block.num
 			maxinvalid = block.invalid_count
 	if db_id is -1:
 		print 'could not find victim block to clean'
 		return (-1,-1)
+	else:
+		print 'found dirty block '+str(db_id)
 
+	# empty block is any block that has left = page_per_block
+	for block in pblist:
+		if (block.left is page_per_block or block.valid_count is 0) and block.gc_count < curr_gc_count and block.num is not db_id:
+			pblist[eb_id].invalid_count = 0
+			pblist[eb_id].left = page_per_block
+			eb_id = block.num
+			break
+	if eb_id is -1:
+		# look for block that can be erased and re-written with victim block pages
+		# and its own pages.
+		print 'could not find empty block, exiting'
+		return (eb_id, db_id)
+
+	print 'successfully found eb_id ' +str(eb_id) + ' db_id '+str(db_id)	
 	return (eb_id, db_id)
 
 # for each ppn, scan through l2pmap and get lpn
@@ -61,10 +71,42 @@ def getlbalist(dblock, l2pmap):
 			if p is ppn:
 				print 'looking for ppn ' + str(ppn) + ' got lbn ' + l
 				lbalist.append(l)
-	print 'lbalist size = ' + (str(len(lbalist))) + ' dblock valid count = ' + str(dblock.valid_count)
+#	print 'lbalist size = ' + (str(len(lbalist))) + ' dblock valid count = ' + str(dblock.valid_count)
 	print lbalist
 	assert(len(lbalist) == dblock.valid_count)
 	return lbalist
+
+# on the event of not finding a completely empty block, look for any block
+# whose pages can be remapped back with the dirty block pages on the same
+# block
+
+def get_merge_block(pblist, db_id, l2pmap):
+	global page_per_block
+	global curr_gc_count
+
+	# get number of valid pages in dirty block
+	dirty_pages = pblist[db_id].valid_count
+	print 'dirty pages = '+str(dirty_pages) + ' dirty block = '+ str(db_id)
+	merge_id = -1
+	merge_block_lpn_list = []
+	for m in pblist:
+		if m.valid_count + dirty_pages <= page_per_block and m.gc_count < curr_gc_count and m.num != db_id:
+			# should have been caught as an empty block!
+			assert(m.left != page_per_block)
+			print 'checking for merge block '+str(m.num) + ' valid count = '+ str(m.valid_count) + ' invald count = '+str(m.invalid_count) + ' left blocks = ' + str(m.left)
+			merge_id = m.num
+			merge_block_lpn_list = getlbalist(m,l2pmap)
+			# this should have been an empty block!!
+			assert(merge_block_lpn_list != [])
+			for lpn in merge_block_lpn_list:
+				invalidate_page(pblist, l2pmap, lpn)
+			assert(pblist[merge_id].valid_count == 0)
+			pblist[merge_id].invalid_count = 0
+			pblist[merge_id].left = page_per_block
+			break
+		else:
+			print 'm valid count = '+ str(m.valid_count) + ' dirty pages = '+ str(dirty_pages) + ' gc count = '+ str(m.gc_count) + ' curr_gc_count = ' + str(curr_gc_count)
+	return (merge_id, merge_block_lpn_list)
 
 # 	 Choose empty block (blk.gc_count < curr_gc_count)
 #                if not found; exit
@@ -75,8 +117,7 @@ def getlbalist(dblock, l2pmap):
 #        Mark Victim -> Empty
 #        Update GC count of both blocks to curr_gc_count.
 
-def gc(pblist):
-
+def gc(pblist, l2pmap):
 	global gc_ratio
 	global curr_gc_count
 	gc_ratio = 0.6
@@ -91,19 +132,45 @@ def gc(pblist):
 	else:
 		print 'performing GC'
 		curr_gc_count +=1
+		mb_id = -1
+		m_lpn_list = []
 		while True:
 			(eb_id, db_id) = get_empty_and_dirty_blocks(pblist)
-			if eb_id is -1 or db_id is -1:
-				print 'ENOSPC no empty and/or dirty blocks to clean!!!'
+			if db_id is -1:
+				print 'No more dirty blocks to clean for current gc cycle'
 				return 0
-			
+						
+			if eb_id is -1:
+				print 'entirely empty block not found'
+				# find merge block, invalidate lbas to be 
+				(mb_id, m_lpn_list) = get_merge_block(pblist, db_id, l2pmap)
+				if mb_id is -1:
+					print 'merge block also not found'
+					print 'failed GC'
+					return -1
+				else:
+					print 'merge block '+ str(mb_id) + ' merge lpn '+ str(m_lpn_list)
+					eb_id = mb_id
+					assert(pblist[eb_id].valid_count == 0)
+					pblist[eb_id].invalid_count = 0
+					pblist[eb_id].left = page_per_block
+				# found merge block, invalidated merge block entries
+				# obtained m_lpn list - list of valid merge block ids
+				# to be remapped.
+				
+
 			print 'empty block id = '+ str(eb_id)
 			print 'dirty block id = '+ str(db_id)
 			
 			lpn_list = getlbalist(pblist[db_id],l2pmap)
+			print 'lpn_list '
+			print lpn_list
+			print 'merge_list'
+			print m_lpn_list
+			lpn_list.extend(m_lpn_list)
 			pbpage_offset = 0
-			for _lpn in lpn_list:
-				l2pmap[_lpn] = (eb_id * page_per_block) + pbpage_offset
+			for lpn in lpn_list:
+				l2pmap[lpn] = (eb_id * page_per_block) + pbpage_offset
 
 			# update empty block
 			pblist[db_id].valid_count = 0
@@ -116,7 +183,6 @@ def gc(pblist):
 			pblist[eb_id].invalid_count = 0
 			pblist[eb_id].left = page_per_block - len(lpn_list)
 			pblist[eb_id].gc_count = curr_gc_count
-
 
 # remove page from l2pmap, change physical block invalid and valid page count
 def invalidate_page(pblist, l2pmap, lpn):
@@ -144,7 +210,7 @@ def getppn(pblist, l2pmap, lpn):
 
 	if pblist[curr_physical_block].left is 0:
 		print 'choosing new phys block for ' + str(lpn)
-		ret = gc(pblist)
+		ret = gc(pblist, l2pmap)
 		if ret is -1:
 			print 'could not map lpn'
 			return -1
@@ -251,6 +317,7 @@ if __name__ == "__main__":
 				ret = page_level_map(pblist, l2pmap, lpn);
 				if ret is -1:
 					print 'cannot block map ' + str(lpn)
+					print '==== CONSIDER INCREASING DEVICE SIZE ==='
 					break
 
 			if args.ftl_type is 2:
