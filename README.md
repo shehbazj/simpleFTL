@@ -75,19 +75,20 @@ The garbage collection is done by default after 80\% of physical blocks have bee
 
 ```
 Invoke GC
-	Choose empty block (blk.gc_count < curr_gc_count)
-		if not found; exit
 	Choose Victim block (blk.gc_count < curr_gc_count)
 		if not found; exit
+	Choose empty block (blk.gc_count < curr_gc_count)
+		if not found; check for Merge Block (explained below)
 	Move valid from Victim -> Empty
 	Mark Empty -> Valid
 	Mark Victim -> Empty
 	Update GC count of both blocks to curr_gc_count.
 Continue.
-
 ```
 
-## Test Cases
+A _merge block_ is a block that is not completely empty, but has space to keep all entries of the dirty block. In case an empty block is not found, we choose a merge block, invalidate all its entires and then rewrite values back into the block, along with all entries of the _dirty block_.
+
+## traces
 
 * Seq\
 Sequential workload

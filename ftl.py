@@ -66,13 +66,18 @@ def getlbalist(dblock, l2pmap):
 
 	db_id = dblock.num
 	lbalist = []
-	for ppn in range(db_id * page_per_block , db_id * page_per_block + page_per_block):
+	print db_id
+	print page_per_block
+	print db_id * page_per_block
+	print (db_id * page_per_block) + page_per_block 
+	for ppn in range((db_id -1) * page_per_block , db_id * page_per_block):
 		for l,p in l2pmap.items():
 			if p is ppn:
 				print 'looking for ppn ' + str(ppn) + ' got lbn ' + l
 				lbalist.append(l)
 #	print 'lbalist size = ' + (str(len(lbalist))) + ' dblock valid count = ' + str(dblock.valid_count)
 	print lbalist
+	print dblock.valid_count
 	assert(len(lbalist) == dblock.valid_count)
 	return lbalist
 
@@ -236,7 +241,7 @@ def page_level_map(pblist, l2pmap, lpn):
 #	if l2pmap[lpn] is not 0 and l2pmap[lpn] is not None:
 	print 'logical page ' + str(lpn)
 	if l2pmap[lpn] is not -1:
-#		print 'invalidating existing lpn=' + lpn + ' ppn='+str(l2pmap[lpn])
+		print 'invalidating existing lpn=' + lpn + ' ppn='+str(l2pmap[lpn])
 		invalidate_page(pblist, l2pmap, lpn)
 	ppn = getppn(pblist, l2pmap, lpn)
 	if ppn is -1:
@@ -269,7 +274,7 @@ def dumpMap(l2pmap):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Create A FTL Simulator.\n')
-	parser.add_argument('ftl_type', type=int,  help='Type 0: Page Level\n1: Block level\n2: Hybrid\n')
+	parser.add_argument('ftl_type', type=int,  help='Type 1: Page Level\n2: Block level\n3: Hybrid\n')
 	parser.add_argument('dev_size', type=int,  help='Device size in MBs\n')
 	parser.add_argument('block_size', type=int, help='Block Size in MBs\n')
 	parser.add_argument('page_size', type=int, help='Page Size in KBs\n')
@@ -290,13 +295,15 @@ if __name__ == "__main__":
 	curr_physical_page = 0
 	page_per_block = 0
 	num_blocks = 0
-	page_size = args.page_size
-	block_size = args.block_size
-	dev_size = args.dev_size 
+	page_size = args.page_size * 1024
+	block_size = args.block_size * 1024 * 1024
+	dev_size = args.dev_size * 1024 * 1024
 	curr_gc_count = 1
 
 	num_blocks = dev_size / block_size
-	page_per_block = (args.block_size * 1024) / page_size
+	page_per_block = block_size / page_size
+
+	print 'page size = ' +str(page_size) + ' block size = ' +str(block_size) + ' dev size = ' +str(dev_size)
 
 	l2pmap = defaultdict(lambda: -1)
 
