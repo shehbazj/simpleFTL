@@ -28,12 +28,11 @@ def invalidate_page(pblist, l2pmap, lpn):
 	global page_per_block
 	global num_blocks
 
-
 	pbn = l2pmap[lpn]
 	block_num = pbn / page_per_block
 	pblist[block_num].valid_count-=1
 	pblist[block_num].invalid_count+=1
-	l2pmap[lpn] = None
+	l2pmap[lpn] = -1
 
 # allocate the next available physical page number to the logical page number
 def getppn(pblist, l2pmap, lpn):
@@ -61,8 +60,9 @@ def getppn(pblist, l2pmap, lpn):
 
 # map a lpn to the next available ppn using the page level mapping scheme
 def page_level_map(pblist, l2pmap, lpn):
-	if l2pmap[lpn] is not 0:
-		print 'invalidating value'
+#	if l2pmap[lpn] is not 0 and l2pmap[lpn] is not None:
+	if l2pmap[lpn] is not -1:
+		print 'invalidating existing lpn=' + lpn + ' ppn='+str(l2pmap[lpn])
 		invalidate_page(pblist, l2pmap, lpn)
 	ppn = getppn(pblist, l2pmap, lpn)
 	l2pmap[lpn] = ppn
@@ -92,7 +92,6 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Create A FTL Simulator.\n')
 	parser.add_argument('ftl_type', type=int,  help='Type 0: Page Level\n1: Block level\n2: Hybrid\n')
 	parser.add_argument('dev_size', type=int,  help='Device size in MBs\n')
-#	parser.add_argument('dev_size', type=int, nargs='+', help='Device size in GBs\n')
 	parser.add_argument('block_size', type=int, help='Block Size in MBs\n')
 	parser.add_argument('page_size', type=int, help='Page Size in KBs\n')
 	parser.add_argument('trace_file', type=str, help='Input Trace File\n')
@@ -118,7 +117,7 @@ if __name__ == "__main__":
 	num_blocks = dev_size / block_size
 	page_per_block = (args.block_size * 1024) / page_size
 
-	l2pmap = defaultdict(int)
+	l2pmap = defaultdict(lambda: -1)
 
 	pblist = []
 	for i in range(1, num_blocks + 1):
