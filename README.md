@@ -73,3 +73,25 @@ TODO: Enhance GC to not only take free blocks but also blocks that have been fil
 
 The garbage collection is done by default after 80\% of physical blocks have been used in the file system. Garbage collection involves choosing the block containing the most number of invalid pages, selecting a destination block / free pool block, transferring valid pages from source block to the destination block. the physical pages in the source block can now be re-used during mapping.
 
+```
+Invoke GC
+	Choose empty block (blk.gc_count < curr_gc_count)
+		if not found; exit
+	Choose Victim block (blk.gc_count < curr_gc_count)
+		if not found; exit
+	Move valid from Victim -> Empty
+	Mark Empty -> Valid
+	Mark Victim -> Empty
+	Update GC count of both blocks to curr_gc_count.
+Continue.
+
+```
+
+## Test Cases
+
+* Seq\
+Sequential workload
+* Overwrite\
+Overwrite trace used to check if previous block entries were replaced or not
+* GC Trace\
+A Trace that invokes GC by invalidating pages
