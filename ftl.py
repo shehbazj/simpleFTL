@@ -35,19 +35,22 @@ def get_empty_and_dirty_blocks(pblist):
 	for block in pblist:
 #		print 'block '+str(block.num)+' iv_count = '+str(block.invalid_count) +' gc count = '+str(block.gc_count)+' curr_gc_count = '+str(curr_gc_count)
 		if block.invalid_count > maxinvalid and block.gc_count < curr_gc_count:
-			print 'got db = '+str(block.num)
+	#		print 'got db = '+str(block.num) + 'max invalid = '+str(block.invalid_count)
 			db_id = block.num
 			maxinvalid = block.invalid_count
+	#	else:
+	#		print 'bnum = '+ str(block.num) + ' invalid count = ' + str(block.invalid_count) + ' gc count = '+ str(block.gc_count) + ' curr_gc_count ' + str(curr_gc_count)
 	if db_id is -1:
 		print 'could not find victim block to clean'
 		return (-1,-1)
 	else:
-		print 'found dirty block '+str(db_id)
+		print 'found dirty block '+str(db_id) + ' valid = ' + str(pblist[db_id].valid_count) + ' invalid = '+str(pblist[db_id].invalid_count)
 
 	# empty block is any block that has left = page_per_block
 	for block in pblist:
 		if (block.left is page_per_block or block.valid_count is 0) and block.gc_count < curr_gc_count and block.num is not db_id:
 			pblist[eb_id].invalid_count = 0
+			pblist[eb_id].vald_count = 0
 			pblist[eb_id].left = page_per_block
 			eb_id = block.num
 			break
@@ -66,18 +69,21 @@ def getlbalist(dblock, l2pmap):
 
 	db_id = dblock.num
 	lbalist = []
-	print db_id
-	print page_per_block
-	print db_id * page_per_block
-	print (db_id * page_per_block) + page_per_block 
-	for ppn in range((db_id -1) * page_per_block , db_id * page_per_block):
+	for ppn in range(db_id * page_per_block , (db_id +1 ) * page_per_block):
+#		print 'looking for ppn ' + str(ppn) + ' in db_id ' + str(db_id)
 		for l,p in l2pmap.items():
 			if p is ppn:
-				print 'looking for ppn ' + str(ppn) + ' got lbn ' + l
+		#		print 'looking for ppn ' + str(ppn) + ' got lpn ' + l
 				lbalist.append(l)
+			#else:
+			#	print 'p is ' + str(p)
+
 #	print 'lbalist size = ' + (str(len(lbalist))) + ' dblock valid count = ' + str(dblock.valid_count)
-	print lbalist
-	print dblock.valid_count
+	# atleast 1 lba should be present for the dirty block
+#	assert(len(lbalist) != 0)
+#	print lbalist
+#	print dblock.valid_count
+
 	assert(len(lbalist) == dblock.valid_count)
 	return lbalist
 
@@ -107,6 +113,7 @@ def get_merge_block(pblist, db_id, l2pmap):
 				invalidate_page(pblist, l2pmap, lpn)
 			assert(pblist[merge_id].valid_count == 0)
 			pblist[merge_id].invalid_count = 0
+			pblist[merge_id].valid_count = 0
 			pblist[merge_id].left = page_per_block
 			break
 		else:
@@ -147,6 +154,7 @@ def gc(pblist, l2pmap):
 						
 			if eb_id is -1:
 				print 'entirely empty block not found'
+				assert(0)
 				# find merge block, invalidate lbas to be 
 				(mb_id, m_lpn_list) = get_merge_block(pblist, db_id, l2pmap)
 				if mb_id is -1:
@@ -166,27 +174,34 @@ def gc(pblist, l2pmap):
 
 			print 'empty block id = '+ str(eb_id)
 			print 'dirty block id = '+ str(db_id)
-			
+
 			lpn_list = getlbalist(pblist[db_id],l2pmap)
-			print 'lpn_list '
-			print lpn_list
-			print 'merge_list'
-			print m_lpn_list
+			#print 'lpn_list '
+			#print lpn_list
+			#print 'merge_list'
+			#print m_lpn_list
 			lpn_list.extend(m_lpn_list)
 			pbpage_offset = 0
 			for lpn in lpn_list:
-				l2pmap[lpn] = (eb_id * page_per_block) + pbpage_offset
+				invalidate_page(pblist, l2pmap, lpn)
+				assert(l2pmap[lpn] == -1)
+				ppn = (eb_id * page_per_block) + pbpage_offset
+				l2pmap[lpn] = ppn
+				pbpage_offset+=1
+				print ' lpn '+str(lpn)+' remapped to '+str(ppn)
 
-			# update empty block
+			# update dirty block
 			pblist[db_id].valid_count = 0
 			pblist[db_id].invalid_count = 0
 			pblist[db_id].left = page_per_block
 			pblist[db_id].gc_count = curr_gc_count
+			assert(pblist[db_id].valid_count + pblist[db_id].invalid_count + pblist[db_id].left == page_per_block)
 
-			# update victim block
+			# update empty block
 			pblist[eb_id].valid_count = len(lpn_list)
 			pblist[eb_id].invalid_count = 0
 			pblist[eb_id].left = page_per_block - len(lpn_list)
+			assert(pblist[eb_id].valid_count + pblist[eb_id].invalid_count + pblist[eb_id].left == page_per_block)
 			pblist[eb_id].gc_count = curr_gc_count
 
 # remove page from l2pmap, change physical block invalid and valid page count
@@ -200,11 +215,17 @@ def invalidate_page(pblist, l2pmap, lpn):
 	global page_per_block
 	global num_blocks
 
-	pbn = l2pmap[lpn]
-	block_num = pbn / page_per_block
+	assert(lpn in l2pmap)
+	ppn = l2pmap[lpn]
+	assert(ppn != -1)
+	assert(ppn != None)
+	block_num = ppn / page_per_block
 	pblist[block_num].valid_count-=1
 	pblist[block_num].invalid_count+=1
+	assert(pblist[block_num].valid_count + pblist[block_num].invalid_count + pblist[block_num].left == page_per_block)
 	l2pmap[lpn] = -1
+	if ppn > (4 * 88) and ppn < (4 * 89):
+		print 'invalidated ppn ' + str(ppn) + ' block num ' + str(block_num)
 
 # allocate the next available physical page number to the logical page number
 def getppn(pblist, l2pmap, lpn):
@@ -214,7 +235,7 @@ def getppn(pblist, l2pmap, lpn):
 	global num_blocks
 
 	if pblist[curr_physical_block].left is 0:
-		print 'choosing new phys block for ' + str(lpn)
+#		print 'choosing new phys block for ' + str(lpn)
 		ret = gc(pblist, l2pmap)
 		if ret is -1:
 			print 'could not map lpn'
@@ -225,28 +246,32 @@ def getppn(pblist, l2pmap, lpn):
 			if pblist[i].left is not 0:
 				curr_physical_block = i
 				curr_physical_page = page_per_block - pblist[i].left
-				print 'new current block = '+ str(curr_physical_block)
+#				print 'new current block = '+ str(curr_physical_block)
 				break
 
 	# allocate next physical block
 	pblist[curr_physical_block].left-=1
 	pblist[curr_physical_block].valid_count+=1
+	assert(pblist[curr_physical_block].valid_count + pblist[curr_physical_block].invalid_count + pblist[curr_physical_block].left == page_per_block)
 	assert(curr_physical_page < page_per_block)
 	pbn = ((curr_physical_block * page_per_block) + curr_physical_page)
 	curr_physical_page+=1
 	return pbn
 
 # map a lpn to the next available ppn using the page level mapping scheme
+
+# if page already exists, invalidate the older page first.
 def page_level_map(pblist, l2pmap, lpn):
-#	if l2pmap[lpn] is not 0 and l2pmap[lpn] is not None:
-	print 'logical page ' + str(lpn)
-	if l2pmap[lpn] is not -1:
-		print 'invalidating existing lpn=' + lpn + ' ppn='+str(l2pmap[lpn])
-		invalidate_page(pblist, l2pmap, lpn)
+#	if lpn in l2pmap:
+#		print 'invalidating existing lpn=' + lpn + ' ppn='+str(l2pmap[lpn])
+#		assert(l2pmap[lpn] != -1)
+#		invalidate_page(pblist, l2pmap, lpn)
 	ppn = getppn(pblist, l2pmap, lpn)
 	if ppn is -1:
 		print 'could not map, returning'
 		return -1
+	if ppn > (4 * 88) and ppn < (4 * 89):
+		print 'ppn ' + str(ppn) + ' taken by lpn '+str(lpn)
 	l2pmap[lpn] = ppn
 	return 0
 	
@@ -305,11 +330,13 @@ if __name__ == "__main__":
 
 	print 'page size = ' +str(page_size) + ' block size = ' +str(block_size) + ' dev size = ' +str(dev_size)
 
-	l2pmap = defaultdict(lambda: -1)
+	l2pmap = defaultdict(int)
 
 	pblist = []
 	for i in range(0, num_blocks):
 		pblist.append(pb(i, page_per_block))
+
+	print 'len pblist = ' +str(len(pblist))
 
 	lines = tuple(open(args.trace_file, 'r'))
 	
