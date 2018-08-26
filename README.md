@@ -71,7 +71,9 @@ TODO: Enhance GC to not only take free blocks but also blocks that have been fil
 
 ## Garbage Collection
 
-The garbage collection is done by default after 80\% of physical blocks have been used in the file system. Garbage collection involves choosing the block containing the most number of invalid pages, selecting a destination block / free pool block, transferring valid pages from source block to the destination block. the physical pages in the source block can now be re-used during mapping.
+The code follows a _greedy_ garbage collection policy.
+
+The garbage collection is done by default after gc\_count\% of physical blocks have been used in the file system. Garbage collection involves choosing the block containing the most number of invalid pages, selecting a destination block / free pool block, transferring valid pages from source block to the destination block. the physical pages in the source block can now be re-used during mapping.
 
 ```
 Invoke GC
@@ -95,4 +97,5 @@ Sequential workload
 * Overwrite\
 Overwrite trace used to check if previous block entries were replaced or not
 * GC Trace\
-A Trace that invokes GC by invalidating pages
+A Trace that invokes GC by invalidating pages. run using ./ftl.py 1 6 1 128 traces/trace\_GC
+This should create a device of 6 blocks, 8 pages and run a trace that would eventually have 11-17 blocks in block number 0.
