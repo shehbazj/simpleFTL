@@ -158,6 +158,7 @@ def gc(pblist, l2pmap):
 			if eb_id is -1:
 				print 'entirely empty block not found'
 				print 'num lpns mapped = '+str(total_lpn_count)
+				return num_gc_cycles
 				#assert(0)
 				# find merge block, invalidate lbas to be remapped
 				curr_gc_count+=1
@@ -202,8 +203,8 @@ def gc(pblist, l2pmap):
 			pblist[eb_id].gc_count = curr_gc_count
 			num_gc_cycles+=1
 
-			print 'empty valid = '+str(pblist[eb_id].valid_count) + ' invalid ' + str(pblist[eb_id].invalid_count)
-			print 'empty valid = '+str(pblist[db_id].valid_count) + ' invalid ' + str(pblist[db_id].invalid_count)
+			print 'empty bid = ' + str(pblist[eb_id].num) +' valid = '+str(pblist[eb_id].valid_count) + ' invalid ' + str(pblist[eb_id].invalid_count) + ' left = ' + str(pblist[eb_id].left)
+			print 'dirty bid = ' + str(pblist[db_id].num) +' valid = '+str(pblist[db_id].valid_count) + ' invalid ' + str(pblist[db_id].invalid_count) + ' left = ' + str(pblist[db_id].left)
 
 # remove page from l2pmap, change physical block invalid and valid page count
 
@@ -228,6 +229,7 @@ def invalidate_page(pblist, l2pmap, lpn):
 	block_num = ppn / page_per_block
 	pblist[block_num].valid_count-=1
 	pblist[block_num].invalid_count+=1
+	print 'bnum ' + str(block_num) + ' valid count ' + str(pblist[block_num].valid_count) + ' invalid count = '+ str(pblist[block_num].invalid_count) + ' left = ' + str(pblist[block_num].left)
 	assert(pblist[block_num].valid_count + pblist[block_num].invalid_count + pblist[block_num].left == page_per_block)
 	del l2pmap[lpn]
 
@@ -372,6 +374,7 @@ if __name__ == "__main__":
 			if args.ftl_type is 3:
 				exit(0)
 				hybrid_map(pblist, l2pmap, lpn);
-
+	
+	print 'total lpn count = ' +str(total_lpn_count)
 	dumpBlocks(pblist)
 	dumpMap(l2pmap)
