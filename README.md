@@ -99,3 +99,5 @@ Overwrite trace used to check if previous block entries were replaced or not
 * GC Trace\
 A Trace that invokes GC by invalidating pages. run using ./ftl.py 1 6 1 128 traces/trace\_GC
 This should create a device of 6 blocks, 8 pages and run a trace that would eventually have 11-17 blocks in block number 0.
+* trace\_Merge\
+A simple extension of the GC trace above that does proactive merging of available blocks.
