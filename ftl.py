@@ -229,7 +229,7 @@ def invalidate_page(pblist, l2pmap, lpn):
 	block_num = ppn / page_per_block
 	pblist[block_num].valid_count-=1
 	pblist[block_num].invalid_count+=1
-	print 'bnum ' + str(block_num) + ' valid count ' + str(pblist[block_num].valid_count) + ' invalid count = '+ str(pblist[block_num].invalid_count) + ' left = ' + str(pblist[block_num].left)
+#	print 'bnum ' + str(block_num) + ' valid count ' + str(pblist[block_num].valid_count) + ' invalid count = '+ str(pblist[block_num].invalid_count) + ' left = ' + str(pblist[block_num].left)
 	assert(pblist[block_num].valid_count + pblist[block_num].invalid_count + pblist[block_num].left == page_per_block)
 	del l2pmap[lpn]
 
@@ -311,7 +311,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Create A FTL Simulator.\n')
 	parser.add_argument('ftl_type', type=int,  help='Type 1: Page Level\n2: Block level\n3: Hybrid\n')
 	parser.add_argument('dev_size', type=int,  help='Device size in MBs\n')
-	parser.add_argument('block_size', type=int, help='Block Size in MBs\n')
+	parser.add_argument('block_size', type=int, help='Block Size in KBs\n')
 	parser.add_argument('page_size', type=int, help='Page Size in KBs\n')
 	parser.add_argument('trace_file', type=str, help='Input Trace File\n')
 	args = parser.parse_args()
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 	page_per_block = 0
 	num_blocks = 0
 	page_size = args.page_size * 1024
-	block_size = args.block_size * 1024 * 1024
+	block_size = args.block_size * 1024
 	dev_size = args.dev_size * 1024 * 1024
 	curr_gc_count = 1
 	total_lpn_count = 0
