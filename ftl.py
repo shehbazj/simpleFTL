@@ -122,7 +122,7 @@ def gc(pblist, l2pmap, p2lmap):
 	global curr_gc_count
 	global total_lpn_count	
 
-	gc_ratio = 0.6
+	gc_ratio = 0.5
 	total_pbs = len(pblist)
 	full_block_count = 0
 	num_gc_cycles = 0
@@ -292,7 +292,7 @@ def dumpBlocks(pblist):
 def dumpMap(l2pmap):
 	s = sorted(l2pmap.items())
 	for k,v in s:
-		print ('lpn'+str( k) + ' ppn' + str(v))
+		print ('lpn '+str( k) + ' ppn ' + str(v) + ' block ' + str(v/page_per_block))
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Create A FTL Simulator.\n')
