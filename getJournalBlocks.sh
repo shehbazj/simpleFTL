@@ -20,9 +20,9 @@ rm -f /tmp/abc
 while read bno ds op;
 do 
 	if [[ $bno -ge $jstart ]]; then
-		echo "$bno journal_block $op"; >> /tmp/abc
+		echo "$bno journal_block $op" >> /tmp/abc
 	else
-		echo $bno $ds $op;  >> /tmp/abc
+		echo "$bno $ds $op"  >> /tmp/abc
 	fi
 done < $fname
 

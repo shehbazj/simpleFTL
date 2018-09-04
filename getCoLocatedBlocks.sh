@@ -24,11 +24,7 @@ blue() {
 usage()
 {
 	echo ""
-	echo "./getCoLocatedBlocks.sh <cmdXXX.blockLog> <cmdXXX.out> dataStructure"
-	echo ""
-	echo "cmdXXX.blockLog - output of forEachSinglet.sh"
-	echo ""
-	echo "cmdXXX.out - output of ./ftl.py"
+	echo "./getCoLocatedBlocks.sh <cmdXXX> dataStructure journal_block_start"
 	echo ""
 	echo "datastructure::"
 	echo "  superblock"
@@ -36,6 +32,10 @@ usage()
 	echo "	group_descriptor"
 	echo "	block_bmap"
 	echo "	inode_bmap"
+	echo ""
+	echo "journal block start - default for 4GB file - 491520"
+	echo "need to manually inspect and see which blocks were written sequentialy in the blockLog"
+	echo ""
 }
 
 check_co_located_journal_blocks()
@@ -47,24 +47,57 @@ check_co_located_journal_blocks()
 	do
 		if [[ $line = *"LPN"* ]]; then
 			lpn=`echo $line | cut -d" " -f2`
+			blue $lpn
 		fi
 		if [[ $lpn -ne -1 ]]; then
 			if [[ $line = *"journal_block"* ]]; then
-				blue $lpn
 				red $line
+				jb=`echo $line | cut -d" " -f1`
+				jb=$(($jb-$jstart))
+				if [[ $jb -eq 0 ]]; then
+					fsblk=0
+				else
+					fsblk=`grep "^$jb:" $jfile | cut -d" " -f4`
+				fi
+				if [[ "$fsblk" =~ $re ]]; then
+					blue "fsblk = $fsblk lpn = $lpn"
+					if [[ "$fsblk" -eq $lpn ]]; then
+						red "========== CRASH!!! ========="
+						sleep 3
+					fi
+				fi
 			fi
 		fi
-	done < /tmp/d_file
+	done < /tmp/co_located_lpns
 }
 
-if [[ "$#" -ne 3 ]]; then
+if [[ "$#" -lt 2 ]]; then
 	usage
 	exit
 fi
 
-blkLog=$1
-out=$2
-ds=$3
+blkLog=traces/$1.blockLog
+out=traces/$1.out
+jfile=traces/$1.journal
+ds=$2
+jstart=${3-491520}
+re='^[0-9]+$'
+
+if [[ ! -f $blkLog ]]; then
+	red "FILE $blkLog \n not found in traces directory, please copy from dm-io/logs/cmdXXX/ directory"
+	echo ""
+	exit
+fi
+
+if [[ ! -f $out ]]; then
+	red "FILE $out \n not found in traces directory, please run ./ftl.py and record its output in traces/$out file"
+	exit
+fi
+
+if [[ ! -f $jfile ]]; then
+	red "FILE $jfile \n not found in traces directory, please copy from dm-io/logs/cmdXXX/ directory"
+	exit
+fi
 
 # 1. Identify logical page number of the data structure of interest.
 
@@ -75,7 +108,7 @@ cat $blkLog | grep "$ds WRITE" | cut -d" " -f1 | sort | uniq > $out.lpns
 # 3. Identify physical page number for lpn in SFTL .out trace.
 # 4. Identify other blocks on the physical page.
 
-rm -f /tmp/d_file
+rm -f /tmp/co_located_lpns
 
 while read lpn_no;
 do
@@ -85,12 +118,12 @@ do
 	echo "block_no = $block_no lpn_no = $lpn_no"
 	grep "block $block_no$" $out | cut -d" " -f2 | grep -v "^$lpn_no$" > $blkLog.$lpn_no.coexisting_lpns
 	
-	echo "LPN $lpn_no" > /tmp/d_file
+	echo "LPN $lpn_no" > /tmp/co_located_lpns
 	while read co_lpn_no;
 	do
-		grep "^$co_lpn_no " $blkLog | sort | uniq >> /tmp/d_file
+		grep "^$co_lpn_no " $blkLog | sort | uniq >> /tmp/co_located_lpns
 	done < $blkLog.$lpn_no.coexisting_lpns
-	num_co_located_lpn=`wc -l /tmp/d_file | cut -d" " -f1`
+	num_co_located_lpn=`wc -l /tmp/co_located_lpns | cut -d" " -f1`
 	echo "number of co_located lpns in Block $block_no = $num_co_located_lpn"
 	grep "BLOCK $block_no$" -A6 $out | grep "^valid"
 
