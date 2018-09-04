@@ -15,11 +15,15 @@ fi
 fname=$1
 jstart=$2
 
+rm -f /tmp/abc
+
 while read bno ds op;
 do 
 	if [[ $bno -ge $jstart ]]; then
-		echo "$bno journal_block $op";
+		echo "$bno journal_block $op"; >> /tmp/abc
 	else
-		echo $bno $ds $op;
+		echo $bno $ds $op;  >> /tmp/abc
 	fi
 done < $fname
+
+mv /tmp/abc $fname
