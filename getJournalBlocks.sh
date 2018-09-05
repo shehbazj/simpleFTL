@@ -5,15 +5,17 @@
 usage()
 {
 	echo "./getJournalBlocks.sh <cmdxxx.blockLog> <journal_block_start>"
+	echo ""
+	echo "journal_block_start - start of block journal. default for 4GB device 491520"
 }
 
-if [[ "$#" -ne 2 ]]; then
+if [[ "$#" -lt 1 ]]; then
 	usage
 	exit
 fi
 
 fname=$1
-jstart=$2
+jstart=${2-491520}
 
 rm -f /tmp/abc
 
