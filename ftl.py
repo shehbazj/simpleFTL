@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+import sys
 from collections import defaultdict
 
 # pb - physical block
@@ -323,6 +324,8 @@ if __name__ == "__main__":
 	dev_size = args.dev_size * 1024 * 1024
 	curr_gc_count = 1
 	total_lpn_count = 0
+
+	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.out', "w")
 
 	num_blocks = dev_size / block_size
 	page_per_block = block_size / page_size

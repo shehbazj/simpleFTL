@@ -24,7 +24,9 @@ blue() {
 usage()
 {
 	echo ""
-	echo "./getCoLocatedBlocks.sh <cmdXXX> dataStructure journal_block_start"
+	echo "./getCoLocatedBlocks.sh block_size <cmdXXX> dataStructure journal_block_start"
+	echo ""
+	echo "block size in KBs, same as ftl.py block_size"
 	echo ""
 	echo "datastructure::"
 	echo "  superblock"
@@ -64,6 +66,7 @@ check_co_located_journal_blocks()
 					if [[ "$fsblk" -eq $lpn ]]; then
 						red "========== CRASH!!! ========="
 						sleep 3
+						crash_count=$(($crash_count+1))
 					fi
 				fi
 			fi
@@ -71,17 +74,20 @@ check_co_located_journal_blocks()
 	done < /tmp/co_located_lpns
 }
 
-if [[ "$#" -lt 2 ]]; then
+if [[ "$#" -lt 3 ]]; then
 	usage
 	exit
 fi
 
-blkLog=traces/$1.blockLog
-out=traces/$1.out
-jfile=traces/$1.journal
-ds=$2
-jstart=${3-491520}
+bs=$1
+blkLog=traces/$2.blockLog
+out=traces/$2.bs.$bs.out
+jfile=traces/$2.journal
+ds=$3
+jstart=${4-491520}
 re='^[0-9]+$'
+
+crash_count=0
 
 if [[ ! -f $blkLog ]]; then
 	red "FILE $blkLog \n not found in traces directory, please copy from dm-io/logs/cmdXXX/ directory"
@@ -132,3 +138,7 @@ do
 
 done < $out.lpns
 
+num_lpns=`wc -l $out.lpns | cut -d" " -f1`
+red "==============================="
+blue "$ds [ $crash_count / $num_lpns ]"
+red "==============================="
