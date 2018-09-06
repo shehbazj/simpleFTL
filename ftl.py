@@ -4,6 +4,11 @@ import argparse
 import sys
 from collections import defaultdict
 
+# this program maps the block trace to different physical blocks and gives the 
+# number of valid and invalid pages in the block. The program also gives the 
+# logical to physical address mapping which is stored in l2pmap.
+# the output is stored in traces/cmdXXX.out file.
+
 # pb - physical block
 # ppn - physical page number. block contains multiple pages
 # page_per_block - number of physical pages in 1 block.
@@ -13,18 +18,20 @@ from collections import defaultdict
 class pb:
 	def __init__(self):
 		self.valid_count = 0	# no of valid page entries
-		self.invalid_count = 0	# no of invalid page entries 
+		self.invalid_count = 0	# no of invalid page entries
 		self.left = 0		# no of pages left = total pages - (valid_count + invalid_count)
 		self.num = 0		# block number
 		self.gc_count = 0	# gc id. each block should have either same
 					# gc id or a gc id less than curr_gc_id
+		self.page_map = [False] * page_per_block
 	
 	def __init__(self,num, page_per_block):
-		self.num = num		
+		self.num = num
 		self.valid_count = 0
 		self.invalid_count = 0
 		self.left = page_per_block
 		self.gc_count = 0
+		self.page_map = [False] * page_per_block
 
 def get_empty_and_dirty_blocks(pblist):
 	global curr_gc_count
@@ -37,7 +44,7 @@ def get_empty_and_dirty_blocks(pblist):
 		if block.invalid_count > maxinvalid and block.gc_count < curr_gc_count:
 			db_id = block.num
 			maxinvalid = block.invalid_count
-	if db_id is -1:
+	if db_id is -1 or pblist[db_id].valid_count < 0:
 		print 'could not find victim block to clean'
 		return (-1,-1)
 	else:
@@ -118,12 +125,12 @@ def get_merge_block(pblist, db_id, l2pmap, p2lmap):
 #        Mark Victim -> Empty
 #        Update GC count of both blocks to curr_gc_count.
 
-def gc(pblist, l2pmap, p2lmap):
+def gc_pm(pblist, l2pmap, p2lmap):
 	global gc_ratio
 	global curr_gc_count
 	global total_lpn_count	
 
-	gc_ratio = 0.5
+	gc_ratio = 0.9
 	total_pbs = len(pblist)
 	full_block_count = 0
 	num_gc_cycles = 0
@@ -189,6 +196,12 @@ def gc(pblist, l2pmap, p2lmap):
 			pblist[eb_id].valid_count = len(lpn_list)
 			pblist[eb_id].invalid_count = 0
 			pblist[eb_id].left = page_per_block - len(lpn_list)
+			if pblist[eb_id].left < 0:
+				# XXX BUG/HACK sometimes lpn_list increases to greater than 
+				# page_per_block.
+				pblist[eb_id].left = 0
+				pblist[eb_id].invalid_count = page_per_block
+				pblist[eb_id].valid_count = 0
 			assert(pblist[eb_id].valid_count + pblist[eb_id].invalid_count + pblist[eb_id].left == page_per_block)
 			pblist[eb_id].gc_count = curr_gc_count
 			num_gc_cycles+=1
@@ -232,7 +245,7 @@ def getppn(pblist, l2pmap, p2lmap, lpn):
 	global num_blocks
 
 	if pblist[curr_physical_block].left is 0:
-		ret = gc(pblist, l2pmap, p2lmap)
+		ret = gc_pm(pblist, l2pmap, p2lmap)
 		if ret is 0:
 			print 'could not perform any GC operations'
 			#return -1
@@ -240,7 +253,7 @@ def getppn(pblist, l2pmap, p2lmap, lpn):
 		curr_physical_page = 0
 		curr_physical_block = -1
 		for i in range(0, len(pblist)):
-			if pblist[i].left is not 0:
+			if pblist[i].left > 0 and pblist[i].valid_count >= 0:
 				curr_physical_block = i
 				curr_physical_page = page_per_block - pblist[i].left
 				break
@@ -273,8 +286,21 @@ def page_level_map(pblist, l2pmap, p2lmap, lpn):
 	l2pmap[lpn] = ppn
 	p2lmap[ppn] = lpn
 	return 0
-	
-def block_level_map():
+
+def block_level_map(pblist, l2pmap, p2lmap, lpn):
+	global page_per_block
+	page_idx = lpn % page_per_block
+	lbn = lpn / page_per_block
+	if logical_block_no in l2pmap: # block already mapped
+		if pblist[lbn].page_map[page_idx] = False: # page not mapped before
+			pblist[lbn].page_map[page_idx] = True
+		else: # XXX invalidate page, remap block, remap page
+		# choose new empty erase block
+		# set page list of new empty erase block as  
+	else:
+				
+		 
+
 	return
 
 def hybrid_map():
@@ -356,13 +382,16 @@ if __name__ == "__main__":
 			if args.ftl_type is 1:
 				ret = page_level_map(pblist, l2pmap, p2lmap ,lpn);
 				if ret is -1:
-					print 'cannot block map ' + str(lpn)
+					print 'cannot map logical page ' + str(lpn)
 					print '==== CONSIDER INCREASING DEVICE SIZE ==='
 					break
 
 			if args.ftl_type is 2:
 				exit(0)
-				block_map(pblist, l2pmap, p2lmap, lpn);
+				ret = block_level_map(pblist, l2pmap, p2lmap ,lpn);
+				if ret is -1:
+					print 'cannot map logical page ' + str(lpn)
+					break
 
 			if args.ftl_type is 3:
 				exit(0)

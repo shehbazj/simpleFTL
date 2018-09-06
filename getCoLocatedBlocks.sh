@@ -67,6 +67,7 @@ check_co_located_journal_blocks()
 					if [[ "$fsblk" -eq $lpn ]]; then
 						red "========== CRASH!!! ========="
 						crash=true
+						vulnerable_versions=$(($vulnerable_versions+1))
 					fi
 				fi
 			fi
@@ -92,6 +93,7 @@ jstart=${4-491520}
 re='^[0-9]+$'
 
 crash_count=0
+vulnerable_versions=0
 
 if [[ ! -f $blkLog ]]; then
 	red "FILE $blkLog \n not found in traces directory, please copy from dm-io/logs/cmdXXX/ directory"
@@ -144,5 +146,5 @@ done < $out.lpns
 
 num_lpns=`wc -l $out.lpns | cut -d" " -f1`
 red "==============================="
-blue "$ds [ $crash_count / $num_lpns ]"
+blue "$ds [ $crash_count / $num_lpns ] ($vulnerable_versions)"
 red "==============================="
