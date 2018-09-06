@@ -34,7 +34,7 @@ usage()
 	echo "	group_descriptor"
 	echo "	block_bmap"
 	echo "	inode_bmap"
-	echo ""
+	echo "  directory_block"
 	echo "journal block start - default for 4GB file - 491520"
 	echo "need to manually inspect and see which blocks were written sequentialy in the blockLog"
 	echo ""
@@ -45,6 +45,7 @@ check_co_located_journal_blocks()
 	# mark any journal blocks that have the same data structure as the lpn.
 	
 	lpn=-1
+	crash=false
 	while read line;
 	do
 		if [[ $line = *"LPN"* ]]; then
@@ -65,13 +66,16 @@ check_co_located_journal_blocks()
 					blue "fsblk = $fsblk lpn = $lpn"
 					if [[ "$fsblk" -eq $lpn ]]; then
 						red "========== CRASH!!! ========="
-						sleep 3
-						crash_count=$(($crash_count+1))
+						crash=true
 					fi
 				fi
 			fi
 		fi
 	done < /tmp/co_located_lpns
+	if [[ "$crash" = true ]]; then
+		crash_count=$(($crash_count+1))
+	fi
+
 }
 
 if [[ "$#" -lt 3 ]]; then

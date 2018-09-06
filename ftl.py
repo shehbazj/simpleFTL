@@ -221,7 +221,8 @@ def invalidate_page(pblist, l2pmap, p2lmap, lpn):
 	pblist[block_num].invalid_count+=1
 	assert(pblist[block_num].valid_count + pblist[block_num].invalid_count + pblist[block_num].left == page_per_block)
 	del l2pmap[lpn]
-	del p2lmap[ppn]
+	if ppn in p2lmap:
+		del p2lmap[ppn]
 
 # allocate the next available physical page number to the logical page number
 def getppn(pblist, l2pmap, p2lmap, lpn):
