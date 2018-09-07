@@ -125,7 +125,7 @@ def get_merge_block(pblist, db_id, l2pmap, p2lmap):
 #        Mark Victim -> Empty
 #        Update GC count of both blocks to curr_gc_count.
 
-def gc_pm(pblist, l2pmap, p2lmap):
+def gc_page(pblist, l2pmap, p2lmap):
 	global gc_ratio
 	global curr_gc_count
 	global total_lpn_count	
@@ -245,7 +245,7 @@ def getppn(pblist, l2pmap, p2lmap, lpn):
 	global num_blocks
 
 	if pblist[curr_physical_block].left is 0:
-		ret = gc_pm(pblist, l2pmap, p2lmap)
+		ret = gc_page(pblist, l2pmap, p2lmap)
 		if ret is 0:
 			print 'could not perform any GC operations'
 			#return -1
@@ -287,21 +287,66 @@ def page_level_map(pblist, l2pmap, p2lmap, lpn):
 	p2lmap[ppn] = lpn
 	return 0
 
+def gc_block(l2pmap,p2lmap, pblist):
+	return	
+
+# remaps lbn to a free pbn.
+# finds empty pbn with left = page_block_size, valid = 0, invalid = 0
+
+def getpbn(l2pmap, p2lmap, pblist)
+	for i in range(0, len(pblist)):
+		if pblist[i].left = page_per_block and pblist[i].valid = 0 and pblist[i].invalid =0: 
+			return i	
+
+def remap_block(lbn, l2pmap, p2lmap, pblist):
+	global page_block_size
+	oldpbn = l2pmap[lbn]
+	newpbn = getpbn(l2pmap, p2lmap, pblist)
+	if newpbn is -1:
+		return -1
+	pblist[newpbn].page_map = pblist[oldpbn].page_map
+	pblist[newpbn].valid_count = pblist[oldpbn].valid_count
+	pblist[newpbn].invalid_count = pblist[oldpbn].invalid_count
+	pblist[newpbn].left = pblist[oldpbn].left
+	
+	pblist[oldpbn].invalid_count = page_block_size
+	pblist[oldpbn].left = 0
+	pblist[oldpbn].valid_count = 0
+	pblist[oldpbn].page_map = [False] * page_per_block
+	
+	l2pmap[lbn] = newpbn
+	del p2lmap[oldpbn]
+	p2lmap[newpbn] = lbn
+	return newpbn
+
 def block_level_map(pblist, l2pmap, p2lmap, lpn):
 	global page_per_block
+	global curr_physical_block
+
 	page_idx = lpn % page_per_block
 	lbn = lpn / page_per_block
-	if logical_block_no in l2pmap: # block already mapped
-		if pblist[lbn].page_map[page_idx] = False: # page not mapped before
-			pblist[lbn].page_map[page_idx] = True
-		else: # XXX invalidate page, remap block, remap page
-		# choose new empty erase block
-		# set page list of new empty erase block as  
+	if lbn in l2pmap: # block already mapped
+		pbn = l2pmap[lbn]
+		if pblist[pbn].page_map[page_idx] = False: # page not mapped before
+			pblist[pbn].page_map[page_idx] = True
+			pblist[pbn].valid_count+=1
+			pblist[pbn].left-=1
+			return
+		else:
+			gc_block(l2pmap, p2lmap, pblist)
+			pbn = remap_block(lbn, l2pmap, p2lmap, pblist)
+			if pbn is -1:
+				return -1
+			pblist[pbn].page_map[page_idx] = True
+			pblist[pbn].valid_count+=1
+			pblist[pbn].left-=1
+			return
 	else:
-				
-		 
-
-	return
+		pbn = getpbn(l2pmap, p2lmap, pblist)
+		pblist[pbn].page_map[page_idx] = True
+		pblist[pbn].valid_count+=1
+		pblist[pbn].left-=1
+		return
 
 def hybrid_map():
 	return
