@@ -291,15 +291,15 @@ def gc_block(l2pmap,p2lmap, pblist):
 	return	
 
 # remaps lbn to a free pbn.
-# finds empty pbn with left = page_block_size, valid = 0, invalid = 0
+# finds empty pbn with left = page_per_block, valid = 0, invalid = 0
 
-def getpbn(l2pmap, p2lmap, pblist)
+def getpbn(l2pmap, p2lmap, pblist):
 	for i in range(0, len(pblist)):
-		if pblist[i].left = page_per_block and pblist[i].valid = 0 and pblist[i].invalid =0: 
+		if pblist[i].left is page_per_block and pblist[i].valid_count is 0 and pblist[i].invalid_count is 0: 
 			return i	
 
 def remap_block(lbn, l2pmap, p2lmap, pblist):
-	global page_block_size
+	global page_per_block
 	oldpbn = l2pmap[lbn]
 	newpbn = getpbn(l2pmap, p2lmap, pblist)
 	if newpbn is -1:
@@ -309,7 +309,7 @@ def remap_block(lbn, l2pmap, p2lmap, pblist):
 	pblist[newpbn].invalid_count = pblist[oldpbn].invalid_count
 	pblist[newpbn].left = pblist[oldpbn].left
 	
-	pblist[oldpbn].invalid_count = page_block_size
+	pblist[oldpbn].invalid_count = page_per_block
 	pblist[oldpbn].left = 0
 	pblist[oldpbn].valid_count = 0
 	pblist[oldpbn].page_map = [False] * page_per_block
@@ -323,11 +323,15 @@ def block_level_map(pblist, l2pmap, p2lmap, lpn):
 	global page_per_block
 	global curr_physical_block
 
+	print "lpn = "+str(lpn) + " page per block = "+ str(page_per_block) 
 	page_idx = lpn % page_per_block
 	lbn = lpn / page_per_block
+	print "lbn = "+str(lbn)
 	if lbn in l2pmap: # block already mapped
+		print "lbn in l2pmap"
 		pbn = l2pmap[lbn]
-		if pblist[pbn].page_map[page_idx] = False: # page not mapped before
+		if pblist[pbn].page_map[page_idx] is False: # page not mapped before
+			print "block mapped before, page not mapped before " +str(lpn)
 			pblist[pbn].page_map[page_idx] = True
 			pblist[pbn].valid_count+=1
 			pblist[pbn].left-=1
@@ -342,10 +346,14 @@ def block_level_map(pblist, l2pmap, p2lmap, lpn):
 			pblist[pbn].left-=1
 			return
 	else:
+		print "lbn not in l2pmap"
 		pbn = getpbn(l2pmap, p2lmap, pblist)
+		print "got pbn" + str(pbn)
 		pblist[pbn].page_map[page_idx] = True
 		pblist[pbn].valid_count+=1
 		pblist[pbn].left-=1
+		l2pmap[lbn] = pbn
+		p2lmap[pbn] = lbn
 		return
 
 def hybrid_map():
@@ -397,7 +405,7 @@ if __name__ == "__main__":
 	curr_gc_count = 1
 	total_lpn_count = 0
 
-	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.out', "w")
+#	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.out', "w")
 
 	num_blocks = dev_size / block_size
 	page_per_block = block_size / page_size
@@ -417,7 +425,7 @@ if __name__ == "__main__":
 	lines = tuple(open(args.trace_file, 'r'))
 	
 	for line in lines:
-		lpn=line.split(' ')[0]
+		lpn=int (line.split(' ')[0])
 		opType=line.split(' ')[1]
 		
 		if opType is 'READ':
@@ -432,7 +440,7 @@ if __name__ == "__main__":
 					break
 
 			if args.ftl_type is 2:
-				exit(0)
+				#exit(0)
 				ret = block_level_map(pblist, l2pmap, p2lmap ,lpn);
 				if ret is -1:
 					print 'cannot map logical page ' + str(lpn)
