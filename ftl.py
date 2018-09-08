@@ -130,7 +130,6 @@ def gc_page(pblist, l2pmap, p2lmap):
 	global curr_gc_count
 	global total_lpn_count	
 
-	gc_ratio = 0.9
 	total_pbs = len(pblist)
 	full_block_count = 0
 	num_gc_cycles = 0
@@ -287,9 +286,6 @@ def page_level_map(pblist, l2pmap, p2lmap, lpn):
 	p2lmap[ppn] = lpn
 	return 0
 
-def gc_block(l2pmap,p2lmap, pblist):
-	return	
-
 # remaps lbn to a free pbn.
 # finds empty pbn with left = page_per_block, valid = 0, invalid = 0
 
@@ -297,6 +293,32 @@ def getpbn(l2pmap, p2lmap, pblist):
 	for i in range(0, len(pblist)):
 		if pblist[i].left is page_per_block and pblist[i].valid_count is 0 and pblist[i].invalid_count is 0: 
 			return i	
+
+# look for blocks with invalid_count = page_per_block.
+# change invalid_count = 0, left = page_per_block.
+
+def gc_block(l2pmap, p2lmap, pblist):
+	global gc_ratio
+	gc_count = 0
+	left_block_count = 0
+
+	total_pbs = len(pblist)
+	for block in pblist:
+		if block.left is page_per_block:
+			left_block_count+=1
+
+	if left_block_count > (1 - gc_ratio) * total_pbs:
+		print 'GC not required'
+		return -1
+
+	print 'performing GC'
+	for block in pblist:
+		if block.invalid_count is page_per_block:
+			block.invalid_count = 0
+			block.left = page_per_block
+			gc_count+=1
+	print 'num GC performed '+str(gc_count)
+	return gc_count
 
 def remap_block(lbn, l2pmap, p2lmap, pblist):
 	global page_per_block
@@ -308,7 +330,8 @@ def remap_block(lbn, l2pmap, p2lmap, pblist):
 	pblist[newpbn].valid_count = pblist[oldpbn].valid_count
 	pblist[newpbn].invalid_count = pblist[oldpbn].invalid_count
 	pblist[newpbn].left = pblist[oldpbn].left
-	
+
+	# invalidate old block	
 	pblist[oldpbn].invalid_count = page_per_block
 	pblist[oldpbn].left = 0
 	pblist[oldpbn].valid_count = 0
@@ -323,12 +346,12 @@ def block_level_map(pblist, l2pmap, p2lmap, lpn):
 	global page_per_block
 	global curr_physical_block
 
-	print "lpn = "+str(lpn) + " page per block = "+ str(page_per_block) 
+#	print "lpn = "+str(lpn) + " page per block = "+ str(page_per_block) 
 	page_idx = lpn % page_per_block
 	lbn = lpn / page_per_block
-	print "lbn = "+str(lbn)
+#	print "lbn = "+str(lbn)
 	if lbn in l2pmap: # block already mapped
-		print "lbn in l2pmap"
+#		print "lbn in l2pmap"
 		pbn = l2pmap[lbn]
 		if pblist[pbn].page_map[page_idx] is False: # page not mapped before
 			print "block mapped before, page not mapped before " +str(lpn)
@@ -337,7 +360,9 @@ def block_level_map(pblist, l2pmap, p2lmap, lpn):
 			pblist[pbn].left-=1
 			return
 		else:
-			gc_block(l2pmap, p2lmap, pblist)
+			gc_count = gc_block(l2pmap, p2lmap, pblist)
+			if gc_count is 0:
+				print 'could not do GC!'
 			pbn = remap_block(lbn, l2pmap, p2lmap, pblist)
 			if pbn is -1:
 				return -1
@@ -346,9 +371,9 @@ def block_level_map(pblist, l2pmap, p2lmap, lpn):
 			pblist[pbn].left-=1
 			return
 	else:
-		print "lbn not in l2pmap"
+#		print "lbn not in l2pmap"
 		pbn = getpbn(l2pmap, p2lmap, pblist)
-		print "got pbn" + str(pbn)
+#		print "got pbn" + str(pbn)
 		pblist[pbn].page_map[page_idx] = True
 		pblist[pbn].valid_count+=1
 		pblist[pbn].left-=1
@@ -394,6 +419,7 @@ if __name__ == "__main__":
 	global block_size
 	global dev_size
 	global total_lpn_count
+	global gc_ratio
 
 	curr_physical_block = 0
 	curr_physical_page = 0
@@ -404,6 +430,7 @@ if __name__ == "__main__":
 	dev_size = args.dev_size * 1024 * 1024
 	curr_gc_count = 1
 	total_lpn_count = 0
+	gc_ratio = 0.9
 
 #	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.out', "w")
 

@@ -96,10 +96,20 @@ A _merge block_ is a block that is not completely empty, but has space to keep a
 Sequential workload
 * Overwrite\
 Overwrite trace used to check if previous block entries were replaced or not
-* GC Trace\
-A Trace that invokes GC by invalidating pages. run using ./ftl.py 1 8 512 128 traces/trace\_GC
+* Page GC Trace\
+A Trace that invokes GC by invalidating pages. run using 
+```
+./ftl.py 1 8 512 128 traces/page\_GC and traces/block\_GC
+```
 This should create a device of 6 blocks, 8 pages and run a trace that would eventually have 11-17 blocks in block number 0.
+* Block GC Trace\
+```
+./ftl.py 2 4 512 128 traces/block_GC
+```
 * trace\_Merge\
 A simple extension of the GC trace above that does proactive merging of available blocks.
 * trace\block\_map.
-see eg\_lpns/block\_map run using ./ftl.py 1 8 512 128 traces/block\_map
+see eg\_lpns/block\_map run using
+```
+ ./ftl.py 1 8 512 128 traces/block\_map
+```
