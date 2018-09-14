@@ -432,7 +432,7 @@ if __name__ == "__main__":
 	total_lpn_count = 0
 	gc_ratio = 0.9
 
-#	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.out', "w")
+	sys.stdout = open(args.trace_file.split('.')[0]+'.bs.'+ str(args.block_size) + '.' + str(args.ftl_type) + '.out', "w")
 
 	num_blocks = dev_size / block_size
 	page_per_block = block_size / page_size
