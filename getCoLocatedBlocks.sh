@@ -24,7 +24,7 @@ blue() {
 usage()
 {
 	echo ""
-	echo "./getCoLocatedBlocks.sh block_size <cmdXXX> dataStructure journal_block_start"
+	echo "./getCoLocatedBlocks.sh block_size <cmdXXX> dataStructure pagemaptype journal_block_start"
 	echo ""
 	echo "block size in KBs, same as ftl.py block_size"
 	echo ""
@@ -35,6 +35,7 @@ usage()
 	echo "	block_bmap"
 	echo "	inode_bmap"
 	echo "  directory_block"
+	echo " pagemap type 1 - page map 2 - block map"
 	echo "journal block start - default for 4GB file - 491520"
 	echo "need to manually inspect and see which blocks were written sequentialy in the blockLog"
 	echo ""
@@ -86,7 +87,8 @@ fi
 
 bs=$1
 blkLog=traces/$2.blockLog
-out=traces/$2.bs.$bs.out
+mapType=$4
+out=traces/$2.bs.$bs.$mapType.out
 jfile=traces/$2.journal
 ds=$3
 jstart=${4-491520}
