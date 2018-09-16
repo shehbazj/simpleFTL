@@ -91,7 +91,7 @@ mapType=$4
 out=traces/$2.bs.$bs.$mapType.out
 jfile=traces/$2.journal
 ds=$3
-jstart=${4-491520}
+jstart=${5-491520}
 re='^[0-9]+$'
 
 crash_count=0
