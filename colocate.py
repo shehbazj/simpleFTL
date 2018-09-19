@@ -19,6 +19,16 @@ import argparse
 import os
 from collections import defaultdict
 
+class bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='CoLocate.\n')
 	parser.add_argument('journal_file', type=str)
@@ -31,6 +41,9 @@ if __name__ == "__main__":
 	bfile = args.blockLog_file
 	ofile = args.out_file
 	ds = args.data_structure
+
+	crash_count = 0
+	vulnerable_instances = 0
 
 	print 'initializing l2p map'
 
@@ -55,7 +68,7 @@ if __name__ == "__main__":
 			if int (line.split(' ')[0]) in l2p:
 				jpn.append(int(l2p[int(line.split(' ')[0])]))
 
-	print jpn
+#	print jpn
 
 # create FS journal block list
 
@@ -75,8 +88,8 @@ if __name__ == "__main__":
 			jindex = int(line.split(':')[0])
 			fs_jpnlist[fsblk].append( jpn[jindex])
 
-	print 'fs_jpnlist'
-	print fs_jpnlist
+#	print 'fs_jpnlist'
+#	print fs_jpnlist
 
 # get block numbers of interesting data structures	
 
@@ -86,8 +99,8 @@ if __name__ == "__main__":
 	lines = tuple(open(bfile, 'r'))
 
 	for line in lines:
-		if ds in line:
-			plist.append(line.split(' ')[0])
+		if ds in line and 'WRITE' in line:
+			plist.append(int(line.split(' ')[0]))
 
 
 	for page in plist:
@@ -95,6 +108,15 @@ if __name__ == "__main__":
 		print 'page'
 		print page
 		print 'fs_jpnlist'
+		uniq_crash = True
 		for v in fs_jpnlist.values():
 			if primary_block_location in v:
-				print 'CRASH'			
+				if uniq_crash:
+					crash_count+=1
+					uniq_crash = False
+				print bcolors.FAIL + ' CRASH' + bcolors.ENDC
+				vulnerable_instances+=1
+					
+	print bcolors.WARNING + "================" +bcolors.ENDC
+	print bcolors.OKBLUE + str(ds) + ' = ' + str(crash_count)+ '/' + str(len(plist)) + ' (' + str(vulnerable_instances) + ')' + bcolors.ENDC
+	print bcolors.WARNING + "================" +bcolors.ENDC
