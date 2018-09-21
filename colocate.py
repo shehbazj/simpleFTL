@@ -57,6 +57,8 @@ if __name__ == "__main__":
 			l2p[int(line.split(' ')[1])] = int(line.split(' ')[5].rstrip())
 
 # journal to physical block number mapping
+# from l2pmap, for each journal block, get physical block number.
+# from blockLog file, for each journal block, assign physical block locations to a list
 
 	print 'initializing journal to physical map'
 
@@ -68,28 +70,23 @@ if __name__ == "__main__":
 			if int (line.split(' ')[0]) in l2p:
 				jpn.append(int(l2p[int(line.split(' ')[0])]))
 
-#	print jpn
-
-# create FS journal block list
+# create primary, replica's physical location list
 
 	print 'creating lpn - journal physical block list'
 
-	fs_jpnlist = defaultdict(list)
+	prdict = defaultdict(list)
 	lines = tuple(open(jfile, 'r'))
 
 	for line in lines:
 		if 'FS Block' in line and 'Unknown' not in line:
 			fsblk = int(line.split('FS Block ')[1].rstrip())
 			jindex = int(line.split(':')[0])
-			fs_jpnlist[fsblk].append( jpn[jindex])
+			prdict[fsblk].append(jpn[jindex])
 				
 		if 'Superblock' in line:
 			fsblk = 491520
 			jindex = int(line.split(':')[0])
-			fs_jpnlist[fsblk].append( jpn[jindex])
-
-#	print 'fs_jpnlist'
-#	print fs_jpnlist
+			prdict[fsblk].append( jpn[jindex])
 
 # get block numbers of interesting data structures	
 
@@ -102,20 +99,31 @@ if __name__ == "__main__":
 		if ds in line and 'WRITE' in line:
 			plist.append(int(line.split(' ')[0]))
 
+	plist = set(plist)
+#	print plist
+#	exit(0)
 
 	for page in plist:
+		if page not in l2p:
+			continue
 		primary_block_location = l2p[int(page)]
-		print 'page'
-		print page
-		print 'fs_jpnlist'
 		uniq_crash = True
-		for v in fs_jpnlist.values():
-			if primary_block_location in v:
-				if uniq_crash:
-					crash_count+=1
-					uniq_crash = False
-				print bcolors.FAIL + ' CRASH' + bcolors.ENDC
-				vulnerable_instances+=1
+		if primary_block_location in prdict[page]:
+			print 'page '+str(page) + ' vulnerable'
+			if uniq_crash:
+				crash_count+=1
+				uniq_crash = False
+			print bcolors.FAIL + ' CRASH' + bcolors.ENDC
+			vulnerable_instances+=1
+				
+#		for v in prdict[page].values():
+#			if primary_block_location in v:
+#				print 'page '+str(page) + ' vulnerable'
+#				if uniq_crash:
+#					crash_count+=1
+#					uniq_crash = False
+#				print bcolors.FAIL + ' CRASH' + bcolors.ENDC
+#				vulnerable_instances+=1
 					
 	print bcolors.WARNING + "================" +bcolors.ENDC
 	print bcolors.OKBLUE + str(ds) + ' = ' + str(crash_count)+ '/' + str(len(plist)) + ' (' + str(vulnerable_instances) + ')' + bcolors.ENDC
