@@ -69,6 +69,8 @@ if __name__ == "__main__":
 		if 'journal_block' in line and 'WRITE' in line:
 			if int (line.split(' ')[0]) in l2p:
 				jpn.append(int(l2p[int(line.split(' ')[0])]))
+	print 'journal size = ' +str(len(jpn))
+#	exit(0)
 
 # create primary, replica's physical location list
 
@@ -77,14 +79,28 @@ if __name__ == "__main__":
 	prdict = defaultdict(list)
 	lines = tuple(open(jfile, 'r'))
 
+	# there are a bunch of commit blocks and descriptor blocks written in between
+	# FS Blocks. we need to discount these blocks.
+
+#	desc_commit_count = 0
 	for line in lines:
 		if 'FS Block' in line and 'Unknown' not in line:
 			fsblk = int(line.split('FS Block ')[1].rstrip())
 			jindex = int(line.split(':')[0])
-			prdict[fsblk].append(jpn[jindex])
+		#	jindex -= desc_commit_count
+		#	print 'jindex' + str(jindex)
+		#	print 'jpn[jindex] = '+str(jpn[jindex]) + 'jpn len = ' + str(len(jpn))
+		#	print 'fsblk' + str(fsblk)
+			#print 'prdict[fsblk] = '+str(prdict[fsblk])
+			if jindex <= len(jpn):
+				prdict[fsblk].append(jpn[jindex])
+#		if 'Commit Block' in line or 'Descriptor Block' in line:
+		#	jindex = int(line.split(':')[0])
+		#	desc_commit_count+=1
 				
 		if 'Superblock' in line:
-			fsblk = 491520
+#			fsblk = 491520
+			fsblk = 1081344
 			jindex = int(line.split(':')[0])
 			prdict[fsblk].append( jpn[jindex])
 
